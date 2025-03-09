@@ -5,6 +5,7 @@ import { assets } from "../assets/assets"
 import RelatedDocs from "../components/RelatedDocs"
 import { toast } from "react-toastify"
 import axios from "axios"
+import { useSocket } from "../context/SocketContext"
 
 
 const Appointment = () => {
@@ -13,6 +14,7 @@ const Appointment = () => {
   const daysOfWeek=['SUN','MON','TUE','WED','THU','FRI','SAT']
 
   const navigate=useNavigate()
+  const socket = useSocket(); // WebSocket context
 
   const [docInfo, setDocInfo]=useState(null)
   const [docSlots, setDocSlots] = useState([])
@@ -25,6 +27,7 @@ const Appointment = () => {
   }
 
   const getAvailableSlots=async()=>{
+    if (!docInfo) return;
     setDocSlots([])
 
     // getting current date
@@ -58,7 +61,9 @@ const Appointment = () => {
         const slotDate = day +'_' + month + '_' + year
         const slotTime=formattedTime
 
-        const isSlotAvailable=docInfo.slots_booked[slotDate] && docInfo.slots_booked[slotDate].includes(slotTime) ? false : true
+        // const isSlotAvailable=docInfo.slots_booked[slotDate] && docInfo.slots_booked[slotDate].includes(slotTime) ? false : true
+        const isSlotAvailable = !(docInfo?.slots_booked?.[slotDate]?.includes(slotTime));
+
 
         if(isSlotAvailable){
            // add slots to array       
@@ -78,15 +83,21 @@ const Appointment = () => {
     }
   }
 
-
   const bookAppointment=async()=>{
       if(!token){
         toast.warn('Login to book Appointment')
         return navigate('/login')
       }
 
+      if (!slotTime) {
+        toast.warn('Please select a time slot');
+        return;
+      }
+
       try {
-        const date=docSlots[slotIndex][0].datetime
+        const date=docSlots[slotIndex][0]?.datetime
+        if (!date) return toast.error('Invalid date selection');
+
         let day=date.getDate()
         let month=date.getMonth()+1
         let year=date.getFullYear()
@@ -97,6 +108,9 @@ const Appointment = () => {
           toast.success(data.message)
           getDoctorsData()
           navigate('/my-appointments')
+
+          // Emit event to notify other clients about the booked slot
+          socket.emit("book-slot", { docId, slotDate, slotTime });
         } else{
           toast.error(data.message)
         }
@@ -113,12 +127,32 @@ const Appointment = () => {
   },[doctors,docId])
 
   useEffect(()=>{
-    getAvailableSlots()
+    if(docInfo){
+      getAvailableSlots()
+    }
   },[docInfo])
 
-  useEffect(()=>{
-    console.log(docSlots)
-  },[docSlots])
+
+  // Listen for real-time slot updates via WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("update-slot", ({ docId: updatedDocId, slotDate, slotTime }) => {
+      if (updatedDocId !== docId) return; // Ensure only relevant updates are processed
+
+      setDocSlots((prevSlots) =>
+        prevSlots.map((daySlots) =>
+          daySlots.filter((slot) => !(slot.datetime.toLocaleDateString() === slotDate && slot.time === slotTime))
+        )
+      );
+    });
+
+    return () => socket.off("update-slot");
+  }, [socket, docId]);
+
+  // useEffect(()=>{
+  //   console.log(docSlots)
+  // },[docSlots])
 
 
   return docInfo && (

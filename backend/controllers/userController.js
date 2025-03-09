@@ -8,7 +8,7 @@ import doctorModel from "../models/doctorModel.js"
 import appointmentModel from "../models/appointmentModel.js"
 import razorpay from "razorpay"
 import mongoose from "mongoose"
-
+import { io } from "../server.js"
 
 // api to register user
 const registerUser=async(req,res)=>{
@@ -165,6 +165,8 @@ const bookAppointment=async(req , res)=>{
         await session.commitTransaction();
         session.endSession();
 
+        // Emit real-time slot update event
+        io.emit("slot-booked", { docId, slotDate, slotTime });
        
         res.json({success:true, message:"Appointment Booked"})
        
