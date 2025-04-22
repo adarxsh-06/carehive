@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react"
+import { useContext, useEffect} from "react"
 import { AppContext } from "../context/AppContext"
 import axios from "axios"
 import { toast } from "react-toastify"
@@ -6,9 +6,8 @@ import { useNavigate } from "react-router-dom"
 
 
 const MyAppointments = () => {
-  const {backendUrl, token, getDoctorsData}=useContext(AppContext)
+  const {backendUrl, token, appointments, getAppointments, getDoctorsData}=useContext(AppContext)
   const navigate=useNavigate()
-  const [appointments,setAppointments]=useState([])
   const months=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
   const slotDateFormat=(slotDate)=>{
@@ -16,25 +15,12 @@ const MyAppointments = () => {
     return dateArray[0]+" "+months[Number(dateArray[1])]+" "+dateArray[2]
   }
 
-  const getUserAppointments=async()=>{
-    try {
-      const {data}=await axios.get(backendUrl+'/api/user/appointments', {headers:{token}})
-      if(data.success){
-        setAppointments(data.appointments.reverse())
-        console.log(data.appointments)
-      }
-    } catch (error) {
-      console.log(error)
-      toast.error(error.message)
-    }
-  }
-
   const cancelAppointment=async(appointmentId)=>{
     try {
       const {data}=await axios.post(backendUrl+'/api/user/cancel-appointment', {appointmentId}, {headers:{token}})
       if(data.success){
         toast.success(data.message)
-        getUserAppointments()
+        getAppointments()
         getDoctorsData()
       } else{
         toast.error(data.message)
@@ -61,7 +47,7 @@ const MyAppointments = () => {
         try {
           const {data}=await axios.post(backendUrl+'/api/user/verifyRazorpay', response, {headers:{token}})
           if(data.success){
-            getUserAppointments()
+            getAppointments()
             navigate('/my-appointments')
           } else{
             toast.error(data.message)
@@ -94,7 +80,7 @@ const MyAppointments = () => {
   
   useEffect(()=>{
     if(token){
-      getUserAppointments()
+      getAppointments()
     }
   },[token])
 

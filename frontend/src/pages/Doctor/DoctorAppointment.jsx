@@ -3,7 +3,7 @@ import { useContext } from 'react'
 import { DoctorContext } from '../../context/DoctorContext'
 import { useEffect } from 'react'
 import { AppContext } from '../../context/AppContext'
-import { assets } from '../../assets/assets'
+import { assets } from '../../assets_admin/assets'
 
 const DoctorAppointment = () => {
 

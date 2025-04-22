@@ -3,7 +3,6 @@ import cors from "cors"
 import 'dotenv/config'
 import http from "http"; // Required for WebSockets
 import { Server } from "socket.io"; // Import Socket.io
-import mongoose from "mongoose";
 import connectDB from "./config/db.js"
 import connectCloudinary from "./config/cloudinary.js"
 import adminRouter from "./routes/adminRoute.js"
@@ -17,9 +16,29 @@ const port = process.env.PORT || 4040
 connectDB()
 connectCloudinary()
 
+
+// Define allowed origins
+const allowedOrigins = [
+    process.env.FRONTEND_URL || "http://localhost:5173",  // Frontend
+    process.env.ADMIN_URL || "http://localhost:5174"      // Admin panel
+];
+  
+// CORS options
+const corsOptions = {
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ["GET", "POST"],
+    // credentials: true
+};
+
 // middlewares
 app.use(express.json())
-app.use(cors()) //allows the frontend to connect to the backend
+app.use(cors(corsOptions)) //allows the frontend to connect to the backend
 
 
 // api end point 
@@ -34,41 +53,36 @@ app.get('/', (req,res)=>{
 // HTTP server (for socket.io)
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:5173",  //frontend  to change when go for production
-        methods: ["GET", "POST"],
-    },
+    cors: corsOptions
 });
 
 // Store connected clients
-const clients = {};
+const clients = new Map();
 
 // WebSocket Connection
 io.on("connection", (socket) => {
     console.log(`⚡ A user connected: ${socket.id}`);
 
     // Store socket reference for real-time updates
-    socket.on("register-user", (userId) => {
-        clients[userId] = socket.id;
-    });
-
-    // Listen for slot booking events
-    socket.on("slot-booked", (data) => {
-        console.log("🔔 Slot booked: ", data);
-        io.emit("update-slot", data); // Broadcast to all clients
+    socket.on('register', ({ userId, role }) => {
+        clients.set(userId, { socketId: socket.id, role });
+        console.log(`✅ ${role} registered: ${userId}`);
     });
 
     // Handle user disconnect
     socket.on("disconnect", () => {
         console.log(`🔴 User disconnected: ${socket.id}`);
         // Remove user from clients list
-        Object.keys(clients).forEach((key) => {
-            if (clients[key] === socket.id) delete clients[key];
-        });
+        for (const [userId, client] of clients.entries()) {
+            if (client.socketId === socket.id) {
+                clients.delete(userId);
+                break;
+            }
+        }
     });
 });
 
 // Export io to use in controllers
-export { io };
+export { io, clients, server };
 
 server.listen(port,()=>console.log("Server Started: ", port))

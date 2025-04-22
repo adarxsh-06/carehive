@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { DoctorContext } from "../../context/DoctorContext";
 import { useEffect } from "react";
-import { assets } from "../../assets/assets";
+import { assets } from "../../assets_admin/assets";
 import { AppContext } from "../../context/AppContext";
 
 const DoctorDashboard = () => {

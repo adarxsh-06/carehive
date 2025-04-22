@@ -2,8 +2,8 @@ import doctorModel from "../models/doctorModel.js"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import appointmentModel from "../models/appointmentModel.js"
-
-
+import waitlistModel from "../models/waitlistModel.js"
+import { io } from "../server.js"
 
 const changeAvailability=async(req,res)=>{
     try {
@@ -20,8 +20,6 @@ const changeAvailability=async(req,res)=>{
 
 const doctorList=async(req,res)=>{
     try {
-
-        
         const doctors=await doctorModel.find({}).select(['-password', '-email'])
         
         res.json({success:true, doctors})
@@ -98,25 +96,72 @@ const appointmentComplete=async(req,res)=>{
 
 
 // api to mark appointment cancelled for doctor panel
-const appointmentCancel=async(req,res)=>{
+const appointmentCancel = async (req, res) => {
     try {
-
-        const {docId, appointmentId}=req.body
-        const appointmentData=await appointmentModel.findById(appointmentId)
-
-        if(appointmentData && appointmentData.docId===docId){
-            await appointmentModel.findByIdAndUpdate(appointmentId, {cancelled:true})
-            return res.json({success:true, message:"Appointment Cancelled"})
-        } else{
-            return res.json({success:false, message:"Cancellation Failed"})
+      const { docId, appointmentId } = req.body;
+      const appointmentData = await appointmentModel.findById(appointmentId);
+  
+      if (!appointmentData || appointmentData.docId.toString() !== docId) {
+        return res.json({ success: false, message: "Cancellation Failed" });
+      }
+  
+      await appointmentModel.findByIdAndUpdate(appointmentId, { cancelled: true });
+  
+      const slotDate = appointmentData.slotDate;
+      const doctorData = await doctorModel.findById(docId);
+  
+      // Update doctor slots (free the slot)
+      let slots_booked = doctorData.slots_booked || {};
+      slots_booked[slotDate] = slots_booked[slotDate]?.filter(e => e !== appointmentData.slotTime);
+      await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+  
+      // Check waitlist
+      const waitlist = await waitlistModel.findOne({ doctorId: docId, slotDate });
+  
+      if (waitlist && waitlist.users.length > 0) {
+        const nextUser = waitlist.users.shift();
+  
+        const userData = await userModel.findById(nextUser.userId).select("-password");
+  
+        const newAppointment = await appointmentModel.create({
+          docId,
+          userId: nextUser.userId,
+          userData,
+          docData: doctorData,
+          amount: doctorData.fees,
+          slotTime: appointmentData.slotTime,
+          slotDate,
+          date: Date.now(),
+        });
+  
+        // Update doctor slots (assign slot again)
+        slots_booked[slotDate] = [...(slots_booked[slotDate] || []), appointmentData.slotTime];
+        await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+  
+        // Update waitlist
+        if (waitlist.users.length === 0) {
+          await waitlistModel.deleteOne({ _id: waitlist._id });
+        } else {
+          await waitlist.save();
         }
-        
+  
+        // Notify frontend
+        io.to(nextUser.userId.toString()).emit("slotAssigned", {
+          message: "A slot became available and was assigned to you!",
+          appointment: newAppointment,
+        });
+  
+        console.log(`✅ Slot reassigned to waitlisted user ${nextUser.userId}`);
+      }
+  
+      res.json({ success: true, message: "Appointment Cancelled and Waitlist Handled" });
+  
     } catch (error) {
-        console.log(error)
-        res.json({success:false, message:error.message})
+      console.log(error);
+      res.json({ success: false, message: error.message });
     }
-}
-
+  };
+  
 
 // api to get dashboard data for doctor panel
 const doctorDashboard=async(req,res)=>{
@@ -189,6 +234,21 @@ const updateDoctorProfile=async(req,res)=>{
     }
 }
 
+
+const getWaitlistByDoctor = async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+  
+      const waitlists = await waitlistModel.find({ doctorId }).populate('users.userId', 'name email phone');
+  
+      res.status(200).json({ success: true, waitlists });
+    } catch (error) {
+      console.error('Error fetching waitlist:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+
 export {
     changeAvailability,
     doctorList,
@@ -198,5 +258,6 @@ export {
     appointmentCancel, 
     doctorDashboard, 
     doctorProfile, 
-    updateDoctorProfile
+    updateDoctorProfile,
+    getWaitlistByDoctor
 }

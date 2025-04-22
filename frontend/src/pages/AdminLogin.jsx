@@ -5,7 +5,7 @@ import axios from "axios"
 import {toast} from "react-toastify"
 import { DoctorContext } from "../context/DoctorContext"
 
-const Login = () => {
+const AdminLogin = () => {
     const [password,setPassword]=useState('')
     const [email,setEmail]=useState('')
     const [state,setState]=useState('Admin')
@@ -72,4 +72,4 @@ const Login = () => {
   )
 }
 
-export default Login
+export default AdminLogin

@@ -1,10 +1,10 @@
 import { useContext } from "react"
-import { assets } from "../assets/assets"
+import { assets } from "../assets_admin/assets"
 import { AdminContext } from "../context/AdminContext"
 import {useNavigate} from 'react-router-dom'
 import { DoctorContext } from "../context/DoctorContext"
 
-const Navbar = () => {
+const AdminNavbar = () => {
     const {aToken,setAToken}=useContext(AdminContext)
     const {dToken, setDToken}=useContext(DoctorContext)
     const navigate=useNavigate()
@@ -29,4 +29,4 @@ const Navbar = () => {
   )
 }
 
-export default Navbar
+export default AdminNavbar

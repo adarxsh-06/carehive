@@ -1,5 +1,5 @@
 import { useContext, useState } from "react"
-import { assets } from "../../assets/assets"
+import { assets } from "../../assets_admin/assets"
 import { AdminContext } from "../../context/AdminContext"
 import {toast} from "react-toastify"
 import axios from "axios"
@@ -123,7 +123,7 @@ const AddDoctor = () => {
                                 <option value="Dermatologist">Dermatologist</option>
                                 <option value="Pediatricians">Pediatricians</option>
                                 <option value="Neurologist">Neurologist</option>
-                                <option value="Gastroenterologist">Gatroenterologist</option>
+                                <option value="Gastroenterologist">Gastroenterologist</option>
                             </select>
                         </div>
                         <div className="flex-1 flex flex-col gap-1">

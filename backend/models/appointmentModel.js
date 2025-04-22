@@ -46,6 +46,10 @@ const appointmentSchema=new mongoose.Schema({
         type:Boolean,
         default:false
     },
+    waitlist: {
+        type: [String], // array of userIds
+        default: []
+    }
     
 })
 

@@ -22,7 +22,7 @@ const About = () => {
             CareHive is committed to excellence in healthcare technology. We
             continuously strive to enhance our platform, integrating the latest
             advancements to improve user experience and deliver superior
-            service. Whether you're booking your first appointment or managing
+            service. Whether you are booking your first appointment or managing
             ongoing care, CareHive is here to support you every step of the way.
           </p>
           <b className="text-gray-800">Our Vision</b>
