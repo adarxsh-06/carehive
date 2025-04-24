@@ -5,26 +5,26 @@ import { AppContext } from "../../context/AppContext";
 
 const DoctorWaitlist = () => {
   const { backendUrl, token } = useContext(AppContext);
-  const [waitlist, setWaitlist] = useState([]);
+  // const [waitlist, setWaitlist] = useState([]);
 
   const months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  const fetchWaitlist = async () => {
-    try {
-      const { data } = await axios.get(`${backendUrl}/api/doctor/waitlist`, {
-        headers: { token },
-      });
+  // const fetchWaitlist = async () => {
+  //   try {
+  //     const { data } = await axios.get(`${backendUrl}/api/doctor/waitlist`, {
+  //       headers: { token },
+  //     });
 
-      if (data.success) {
-        setWaitlist(data.waitlist.reverse());
-      } else {
-        toast.error(data.message);
-      }
-    } catch (err) {
-      console.log(err);
-      toast.error(err.message);
-    }
-  };
+  //     if (data.success) {
+  //       setWaitlist(data.waitlist.reverse());
+  //     } else {
+  //       toast.error(data.message);
+  //     }
+  //   } catch (err) {
+  //     console.log(err);
+  //     toast.error(err.message);
+  //   }
+  // };
 
   const formatDate = (slotDate) => {
     const [day, month, year] = slotDate.split("_");

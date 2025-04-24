@@ -6,6 +6,12 @@ import { useSocket } from "./SocketContext";
 export const AppContext=createContext()
 
 const AppContextProvider=(props)=>{
+    const [doctors,setDoctors]=useState([])
+    const [token, setToken]=useState(localStorage.getItem('token') ? localStorage.getItem('token') : false)
+    const [userData, setUserData]=useState(false)
+    const [appointments, setAppointments] = useState([]);
+
+    const {socket} = useSocket();
     const currency='₹'
     const calculateAge=(dob)=>{
         const today= new Date()
@@ -20,14 +26,9 @@ const AppContextProvider=(props)=>{
         return dateArray[0]+" "+months[Number(dateArray[1])]+" "+dateArray[2]
     }
 
-    const currencySymbol='₹'
+   
     const backendUrl=import.meta.env.VITE_BACKEND_URL
-    const [doctors,setDoctors]=useState([])
-    const [token, setToken]=useState(localStorage.getItem('token') ? localStorage.getItem('token') : false)
-    const [userData, setUserData]=useState(false)
-    const [appointments, setAppointments] = useState([]);
-
-    const {socket} = useSocket();
+    
 
     const getDoctorsData=async()=>{
         try {
@@ -73,7 +74,7 @@ const AppContextProvider=(props)=>{
 
     const value={ //can be accessed in any component
         doctors,getDoctorsData,
-        currencySymbol,token,setToken,backendUrl,
+        token,setToken,backendUrl,
         userData,setUserData,
         loadUserProfileData,
         appointments, getAppointments,
@@ -98,19 +99,11 @@ const AppContextProvider=(props)=>{
         if (!socket || !userData?._id) return;
 
         const handleAppointmentCanceled = ({appointmentId, slotDate, slotTime}) => {
-            toast.info(`Appointment canceled: ${slotDate} at ${slotTime}`);
-            getAppointments();
-        };
-
-        const handleSlotAvailable = ({docId, slotDate, slotTime}) => {
-            toast.info(`Slot available with Dr. ${docId} on ${slotDate} at ${slotTime}`);
-            // Optionally prompt the user to book the available slot
+            // email sending to that doctor can be done (not too helpful)
+            getAppointments(); //Real-time refresh on slot assign
         };
         
-        
-
-        socket.on('appointment-canceled', handleAppointmentCanceled);
-        socket.on('slot-available', handleSlotAvailable);
+        socket.on('appointment-canceled-user', handleAppointmentCanceled);
 
         socket.on("waitlist-slot-assigned", ({ userId, docId, slotDate, slotTime }) => {
             if (userId === userData._id) {
@@ -118,12 +111,10 @@ const AppContextProvider=(props)=>{
                 getAppointments(); //Real-time refresh on slot assign
             }
         });
-       
-
+    
 
         return () => {
             socket.off('appointment-canceled', handleAppointmentCanceled);
-            socket.off('slot-available', handleSlotAvailable);
             socket.off("waitlist-slot-assigned");
         };
     }, [socket, userData]);

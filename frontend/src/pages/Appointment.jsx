@@ -9,7 +9,7 @@ import { useSocket } from "../context/SocketContext";
 
 const Appointment = () => {
   const { docId } = useParams();
-  const { doctors, currencySymbol, backendUrl, token, getDoctorsData } = useContext(AppContext);
+  const { doctors, currency, backendUrl, token, getDoctorsData } = useContext(AppContext);
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const navigate = useNavigate();
@@ -230,7 +230,7 @@ const Appointment = () => {
             <p className="text-gray-500 font-medium mt-4">
               Appointment fee:{" "}
               <span className="text-gray-600">
-                {currencySymbol}
+                {currency}
                 {docInfo.fees}
               </span>{" "}
             </p>

@@ -130,13 +130,13 @@ const emitToClient = (userId, event, data) => {
 };
 
 // Function to emit events to clients with a specific role
-const emitToRole = (role, event, data) => {
-  for (const [userId, client] of clients.entries()) {
-      if (client.role === role) {
-          io.to(client.socketId).emit(event, data);
-      }
-  }
-};
+// const emitToRole = (role, event, data) => {
+//   for (const [userId, client] of clients.entries()) {
+//       if (client.role === role) {
+//           io.to(client.socketId).emit(event, data);
+//       }
+//   }
+// };
 
 // api to book appointment => handling race condition or concurrecy
 const bookAppointment = async (req, res) => {
@@ -191,7 +191,7 @@ const bookAppointment = async (req, res) => {
 
     // Notify the doctor and admin about the new booking
     emitToClient(docId, 'appointment-booked', { userId, slotDate, slotTime });
-    emitToRole('admin', 'appointment-booked', { userId, docId, slotDate, slotTime });
+    
 
     res.json({ success: true, message: "Appointment Booked" });
   } catch (error) {
@@ -322,21 +322,14 @@ const cancelAppointment = async (req, res) => {
     }
 
     // Notify the original user about successful cancellation
-    emitToClient(userId, "appointment-canceled", {
+    emitToClient(userId, "appointment-canceled-user", {
       appointmentId,
       slotDate,
       slotTime,
     });
   
-    // Notify doctor and admins about the cancellation
-    emitToClient(docId, "appointment-canceled", { userId, slotDate, slotTime });
-
-    // Notify waitlisted users about the available slot
-    if (waitlistData && waitlistData.users.length > 0) {
-      waitlistData.users.forEach(waitlistUser => {
-        emitToClient(waitlistUser.userId, 'slot-available', { docId, slotDate, slotTime });
-      });
-    }
+    // Notify doctor about the cancellation
+    emitToClient(docId, "appointment-canceled-doctor", { userId, slotDate, slotTime });
     
     res.json({ success: true, message: "Appointment Cancelled" });
   } catch (error) {

@@ -109,7 +109,7 @@ const DoctorContextProvider = (props) => {
   // Function to fetch waitlist data
   const fetchDoctorWaitlist = async (doctorId) => {
     try {
-      const response = await axios.get(`${backendUrl}/api/waitlist/${doctorId}`);
+      const response = await axios.get(`${backendUrl}/api/doctor/waitlist/${doctorId}`);
       setWaitlists(response.data.waitlists);
     } catch (err) {
       console.error("Error fetching waitlist:", err);
@@ -132,15 +132,17 @@ const DoctorContextProvider = (props) => {
     profileData,
     setProfileData,
     getProfileData,
+    waitlists,
+    setWaitlists
   };
 
   // Register the user with backend socket
-  // useEffect(() => {
-  //   if (socket && profileData?._id) {
-  //     const role = "doctor";
-  //     socket.emit("register",{userId: profileData._id, role});
-  //   }
-  // }, [socket, profileData]);
+  useEffect(() => {
+    if (socket && profileData?._id) {
+      const role = "doctor";
+      socket.emit("register",{userId: profileData._id, role});
+    }
+  }, [socket, profileData]);
 
   // useEffect(() => {
   //   if (!socket) return;
@@ -161,12 +163,13 @@ const DoctorContextProvider = (props) => {
     if (!socket) return;
 
     const handleAppointmentBooked = ({ userId, slotDate, slotTime }) => {
-      toast.success(`New appointment booked by User ID: ${userId} on ${slotDate} at ${slotTime}`);
+      // email can be sent to doctor
+      toast.success(`New appointment booked by User with ID: ${userId} on ${slotDate} at ${slotTime}`);
       getAppointments(); // Refresh appointments
     };
 
     const handleAppointmentCanceled = ({ userId, slotDate, slotTime }) => {
-      toast.info(`Appointment canceled by User ID: ${userId} on ${slotDate} at ${slotTime}`);
+      toast.info(`Appointment canceled by User with ID: ${userId} on ${slotDate} at ${slotTime}`);
       getAppointments(); // Refresh appointments
     };
 
@@ -176,12 +179,12 @@ const DoctorContextProvider = (props) => {
     };
 
     socket.on('appointment-booked', handleAppointmentBooked);
-    socket.on('appointment-canceled', handleAppointmentCanceled);
+    socket.on('appointment-canceled-doctor', handleAppointmentCanceled);
     socket.on('waitlist-updated', handleWaitlistUpdated);
 
     return () => {
       socket.off('appointment-booked', handleAppointmentBooked);
-      socket.off('appointment-canceled', handleAppointmentCanceled);
+      socket.off('appointment-canceled-doctor', handleAppointmentCanceled);
       socket.off('waitlist-updated', handleWaitlistUpdated);
     };
   }, [socket, profileData]); 
