@@ -109,7 +109,9 @@ const DoctorContextProvider = (props) => {
   // Function to fetch waitlist data
   const fetchDoctorWaitlist = async (doctorId) => {
     try {
-      const response = await axios.get(`${backendUrl}/api/doctor/waitlist/${doctorId}`);
+      const response = await axios.get(`${backendUrl}/api/doctor/waitlist/${doctorId}`,{
+        headers: { dToken },
+      });
       setWaitlists(response.data.waitlists);
     } catch (err) {
       console.error("Error fetching waitlist:", err);

@@ -5,7 +5,7 @@ import doctorModel from "../models/doctorModel.js"
 import jwt from "jsonwebtoken"
 import appointmentModel from "../models/appointmentModel.js"
 import userModel from "../models/userModel.js"
-import { io } from "../server.js"
+import { io, clients } from "../server.js"
 
 
 // API for adding doctor
@@ -120,107 +120,6 @@ const appointmentsAdmin=async(req,res)=>{
         res.json({success:false, message:error.message}) 
     }
 }
-// Function to emit events to specific clients
-const emitToClient = (userId, event, data) => {
-    const client = clients.get(userId);
-    if (client) {
-        io.to(client.socketId).emit(event, data);
-    }
-};
-  
-
-//api to cancel appointment for admin
-const appointmentCancel = async (req, res) => {
-    try {
-      const { appointmentId } = req.body;
-  
-      const appointmentData = await appointmentModel.findById(appointmentId);
-      if (!appointmentData) {
-        return res.json({ success: false, message: "Appointment not found" });
-      }
-  
-      // Mark appointment as cancelled
-      await appointmentModel.findByIdAndUpdate(appointmentId, { cancelled: true });
-  
-      // Release doctor's slot
-      const { docId, slotDate, slotTime } = appointmentData;
-      const doctorData = await doctorModel.findById(docId);
-  
-      let slots_booked = doctorData.slots_booked || {};
-      slots_booked[slotDate] = slots_booked[slotDate]?.filter((e) => e !== slotTime);
-      await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-  
-      // Check waitlist for this docId and slotDate
-      const waitlist = await waitlistModel.findOne({ docId, slotDate });
-  
-      if (waitlist && waitlist.users.length > 0) {
-        const nextUser = waitlist.users.shift(); // FIFO - get first user
-        if (waitlist.users.length === 0) {
-            await waitlistModel.deleteOne({ _id: waitlist._id }); // ✅ Clean it up
-        } else {
-            await waitlist.save(); // ✅ Persist the shortened list
-        }
-        const userData = await userModel.findById(nextUser.userId).select("-password");
-  
-        // Create new appointment for next user
-        const newAppointment = new appointmentModel({
-          userId: nextUser.userId,
-          docId,
-          userData,
-          docData: doctorData,
-          amount: doctorData.fees,
-          slotTime,
-          slotDate,
-          date: Date.now(),
-        });
-
-        
-        try {
-            await newAppointment.save();
-      
-            // Update doctor's slots again to mark slot as booked
-            slots_booked[slotDate] = [...(slots_booked[slotDate] || []), slotTime];
-            await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-    
-            // Real-time notification to next user
-            emitToClient(nextUser.userId, "waitlist-slot-assigned", {
-                userId: nextUser.userId,
-                docId,
-                slotDate,
-                slotTime,
-            });
-            console.log(`✅ Waitlist: Assigned cancelled slot to ${nextUser.userId}`);
-        } catch (error) {
-            if (err.code === 11000) {
-                // Duplicate key error, slot was already taken
-                console.log("❌ Slot already booked by another waitlist user (race condition)");
-            } else {
-                throw err;
-            }
-            
-        }
-  
-        // Save updated waitlist
-        // if (waitlist.users.length === 0) {
-        //   await waitlistModel.deleteOne({ _id: waitlist._id });
-        // } else {
-        //   await waitlist.save();
-        // }
-  
-        // Notify frontend via Socket.io
-        // io.to(nextUser.userId.toString()).emit("slotAssigned", {
-        //   message: "A slot became available and has been assigned to you!",
-        //   appointment: newAppointment,
-        // });
-
-      }
-  
-      res.json({ success: true, message: "Appointment Cancelled & Waitlist Handled" });
-    } catch (error) {
-      console.log("❌ Admin Appointment Cancel Error:", error);
-      res.json({ success: false, message: error.message });
-    }
-  };
   
 
 //api to get dashboard data for admin panel
@@ -248,4 +147,4 @@ const adminDashboard=async(req , res)=>{
     }
 }
 
-export {addDoctor, loginAdmin, allDoctors, appointmentsAdmin, appointmentCancel, adminDashboard}
+export {addDoctor, loginAdmin, allDoctors, appointmentsAdmin, adminDashboard}
