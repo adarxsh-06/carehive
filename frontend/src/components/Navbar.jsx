@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import { useContext, useState } from "react";
 import { AppContext } from "../context/AppContext";
+import { useSocketActions } from "../context/SocketContext";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -10,9 +11,15 @@ const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false); // State for mobile dropdown visibility
   const paths = ["/", "/doctors", "/about", "/contact"];
 
+  const { disconnectAndReconnect } = useSocketActions();
+
   const logout = () => {
     setToken(false);
     localStorage.removeItem("token");
+    
+    // 2. Forcefully disconnect and reset socket
+    disconnectAndReconnect();
+
     navigate("/");
   };
 

@@ -3,19 +3,27 @@ import { assets } from "../assets_admin/assets"
 import { AdminContext } from "../context/AdminContext"
 import {useNavigate} from 'react-router-dom'
 import { DoctorContext } from "../context/DoctorContext"
+import { useSocketActions } from "../context/SocketContext";
 
 const AdminNavbar = () => {
     const {aToken,setAToken}=useContext(AdminContext)
     const {dToken, setDToken}=useContext(DoctorContext)
     const navigate=useNavigate()
 
+    const { disconnectAndReconnect } = useSocketActions();
+
     const logout=()=>{
-        navigate('/')
+       
         aToken && setAToken('')
         aToken && localStorage.removeItem('aToken')
 
         dToken && setDToken('')
         dToken && localStorage.removeItem('dToken')
+
+        // 2. Forcefully disconnect and reset socket
+        disconnectAndReconnect();      
+
+        navigate('/')
     }
     
   return (

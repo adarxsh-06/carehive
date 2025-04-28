@@ -144,6 +144,7 @@ const bookAppointment = async (req, res) => {
   session.startTransaction();
   try {
     const { userId, docId, slotDate, slotTime } = req.body;
+    
     const docData = await doctorModel
       .findById(docId)
       .select("-password")
@@ -152,6 +153,29 @@ const bookAppointment = async (req, res) => {
       await session.abortTransaction();
       return res.json({ success: false, message: "Doctor Not Available" });
     }
+
+    const existingAppointment=await appointmentModel.findOne({
+      userId, docId, slotDate, slotTime, cancelled: true},
+      null,
+      {session}
+    )
+
+    if(existingAppointment){
+      await session.abortTransaction();
+      return res.json({success: false, message: "You can't book this slot again as it's cancelled by/for you!!"})
+    }
+
+    // const existingAppointmentCancelled=await appointmentModel.findOne({
+    //   docId, slotDate, slotTime, cancelled: true},
+    //   null,
+    //   {session}
+    // )
+
+    // if(existingAppointmentCancelled){
+    //   await session.abortTransaction();
+    //   return res.json({success: false, message: "You can't book this slot again as it's cancelled by/for you!!"})
+    // }
+
 
     // Try to update slots_booked atomically
     const updatedDoctor = await doctorModel.findOneAndUpdate(
@@ -192,7 +216,6 @@ const bookAppointment = async (req, res) => {
     // Notify the doctor and admin about the new booking
     emitToClient(docId, 'appointment-booked', { userId, slotDate, slotTime });
     
-
     res.json({ success: true, message: "Appointment Booked" });
   } catch (error) {
     await session.abortTransaction();
@@ -256,7 +279,7 @@ const cancelAppointment = async (req, res) => {
     }
 
     // verify appointment user
-    if (appointmentData.userId !== userId) {
+    if (appointmentData.userId.toString() !== userId) {
       return res.json({ success: false, message: "Unauthorized Action" });
     }
 
@@ -278,7 +301,12 @@ const cancelAppointment = async (req, res) => {
       // Get first user in waitlist
       const nextUser = waitlistData.users.shift(); // FIFO: remove first user
 
-      await waitlistData.save(); // Save updated waitlist (after removal)
+      // Update waitlist
+      if (waitlistData.users.length === 0) {
+        await waitlistModel.deleteOne({ _id: waitlistData._id });
+      } else {
+        await waitlistData.save();
+      }
 
       const userData = await userModel.findById(nextUser.userId).select("-password");
 

@@ -5,10 +5,10 @@ import doctorModel from "../models/doctorModel.js"
 import jwt from "jsonwebtoken"
 import appointmentModel from "../models/appointmentModel.js"
 import userModel from "../models/userModel.js"
-import { io, clients } from "../server.js"
 
 
-// API for adding doctor
+
+// API for adding doctor => email can be sent to doctor welcoming him
 const addDoctor=async(req,res)=>{
     try {
 

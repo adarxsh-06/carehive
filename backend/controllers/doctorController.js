@@ -3,7 +3,7 @@ import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import appointmentModel from "../models/appointmentModel.js"
 import waitlistModel from "../models/waitlistModel.js"
-import { io } from "../server.js"
+import { io, clients } from "../server.js"
 
 const changeAvailability=async(req,res)=>{
     try {
@@ -74,7 +74,8 @@ const appointmentsDoctor=async(req,res)=>{
 }
 
 
-// api to mark appointment completed for doctor panel
+
+// api to mark appointment completed for doctor panel => email can be sent to the patient thanking him for feedback to doctor and rate him
 const appointmentComplete=async(req,res)=>{
     try {
 
@@ -94,7 +95,13 @@ const appointmentComplete=async(req,res)=>{
     }
 }
 
-
+// Function to emit events to specific clients
+const emitToClient = (userId, event, data) => {
+    const client = clients.get(userId);
+    if (client) {
+        io.to(client.socketId).emit(event, data);
+    }
+};
 // api to mark appointment cancelled for doctor panel
 const appointmentCancel = async (req, res) => {
     try {
@@ -107,52 +114,73 @@ const appointmentCancel = async (req, res) => {
   
       await appointmentModel.findByIdAndUpdate(appointmentId, { cancelled: true });
   
-      const slotDate = appointmentData.slotDate;
+    //   releasing doctor slot
+      const { slotDate, slotTime, userId } = appointmentData;
       const doctorData = await doctorModel.findById(docId);
-  
-      // Update doctor slots (free the slot)
       let slots_booked = doctorData.slots_booked || {};
-      slots_booked[slotDate] = slots_booked[slotDate]?.filter(e => e !== appointmentData.slotTime);
+      slots_booked[slotDate]=slots_booked[slotDate]?.filter(e => e !== slotTime) 
       await doctorModel.findByIdAndUpdate(docId, { slots_booked });
   
-      // Check waitlist
-      const waitlist = await waitlistModel.findOne({ doctorId: docId, slotDate });
+      // Check waitlist for that day(not for that slot)
+      const waitlist = await waitlistModel.findOne({ docId, slotDate });
   
       if (waitlist && waitlist.users.length > 0) {
         const nextUser = waitlist.users.shift();
-  
-        const userData = await userModel.findById(nextUser.userId).select("-password");
-  
-        const newAppointment = await appointmentModel.create({
-          docId,
-          userId: nextUser.userId,
-          userData,
-          docData: doctorData,
-          amount: doctorData.fees,
-          slotTime: appointmentData.slotTime,
-          slotDate,
-          date: Date.now(),
-        });
-  
-        // Update doctor slots (assign slot again)
-        slots_booked[slotDate] = [...(slots_booked[slotDate] || []), appointmentData.slotTime];
-        await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-  
+        
         // Update waitlist
         if (waitlist.users.length === 0) {
           await waitlistModel.deleteOne({ _id: waitlist._id });
         } else {
           await waitlist.save();
         }
+
+        const userData = await userModel.findById(nextUser.userId).select("-password");
   
-        // Notify frontend
-        io.to(nextUser.userId.toString()).emit("slotAssigned", {
-          message: "A slot became available and was assigned to you!",
-          appointment: newAppointment,
+        const newAppointment = await appointmentModel.create({
+          userId: nextUser.userId,
+          docId,
+          userData,
+          docData: doctorData,
+          amount: doctorData.fees,
+          slotTime,
+          slotDate,
+          date: Date.now(),
         });
-  
-        console.log(`✅ Slot reassigned to waitlisted user ${nextUser.userId}`);
+
+        try {
+            await newAppointment.save();
+      
+            // Update doctor slots (assign slot again)
+            slots_booked[slotDate] = [...(slots_booked[slotDate] || []), slotTime];
+            await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+      
+            // Real-time notification to next user
+            emitToClient(nextUser.userId, "waitlist-slot-assigned", {
+                userId: nextUser.userId,
+                docId,
+                slotDate,
+                slotTime,
+            });
+              
+            console.log(`✅ Waitlist: Assigned canceled slot to ${nextUser.userId}`);
+        } catch (error) {
+            if (err.code === 11000) {
+                // Duplicate key error, slot was already taken
+                console.log("❌ Slot already booked by another waitlist user (race condition)");
+              } else {
+                throw err;
+            }
+        }
       }
+      // Notify the original user about successful cancellation
+      emitToClient(userId, "appointment-canceled-user", {
+        appointmentId,
+        slotDate,
+        slotTime,
+      });
+    
+      // Notify doctor about the cancellation
+      emitToClient(docId, "appointment-canceled-doctor", { userId, slotDate, slotTime });
   
       res.json({ success: true, message: "Appointment Cancelled and Waitlist Handled" });
   

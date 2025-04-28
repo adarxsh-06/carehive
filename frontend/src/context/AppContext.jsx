@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState } from "react";
 import axios from "axios"
 import {toast} from "react-toastify"
-import { useSocket } from "./SocketContext";
+import { useSocket, useSocketActions } from "./SocketContext";
 
 export const AppContext=createContext()
 
@@ -12,6 +12,8 @@ const AppContextProvider=(props)=>{
     const [appointments, setAppointments] = useState([]);
 
     const {socket} = useSocket();
+    const { registerSocket } = useSocketActions();
+
     const currency='₹'
     const calculateAge=(dob)=>{
         const today= new Date()
@@ -120,30 +122,19 @@ const AppContextProvider=(props)=>{
     }, [socket, userData]);
 
 
-    // Socket event listener for waitlist notification
-    // useEffect(() => {
-    //     if (socket && userData?._id) {
-    //         socket.on("waitlist-slot-assigned", ({ userId, docId, slotDate, slotTime }) => {
-    //             if (userId === userData._id) {
-    //                 toast.success(`A slot has been automatically assigned to you on ${slotDate} at ${slotTime}`);
-    //                 getAppointments(); //Real-time refresh on slot assign
-    //             }
-    //         });
-
-    //         return () => {
-    //             socket.off("waitlist-slot-assigned");
-    //         };
-    //     }
-    // }, [socket, userData]);
-
     
     // Register the user with backend socket
+    // useEffect(() => {
+    //     if (socket && userData?._id) {
+    //         const role = "user";
+    //         socket.emit("register",{userId: userData._id, role});
+    //     }
+    // }, [socket, userData]);
     useEffect(() => {
-        if (socket && userData?._id) {
-            const role = "user";
-            socket.emit("register",{userId: userData._id, role});
+        if (socket && userData && token) {
+            registerSocket(userData._id, "user");
         }
-    }, [socket, userData]);
+    }, [socket, userData, token]);
 
 
     return (

@@ -45,15 +45,11 @@ const appointmentSchema=new mongoose.Schema({
     isCompleted:{
         type:Boolean,
         default:false
-    },
-    waitlist: {
-        type: [String], // array of userIds
-        default: []
     }
     
 })
 
-appointmentSchema.index({ docId: 1, slotDate: 1, slotTime: 1 }, { unique: true }); // prevents double booking
+appointmentSchema.index({ docId: 1, slotDate: 1, slotTime: 1 }, { unique: true, partialFilterExpression: { cancelled: false} }); // prevents double booking
 
 const appointmentModel = mongoose.models.appointment || mongoose.model('appointment',appointmentSchema)
 export default appointmentModel

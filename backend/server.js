@@ -61,7 +61,7 @@ const clients = new Map();
 
 // WebSocket Connection
 io.on("connection", (socket) => {
-    console.log(`⚡ A user connected: ${socket.id}`);
+    // console.log(`⚡ A user connected: ${socket.id}`);
 
     // Store socket reference for real-time updates
     socket.on('register', ({ userId, role }) => {

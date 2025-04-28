@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createContext } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { useSocket } from "./SocketContext";
+import { useSocket, useSocketActions } from "./SocketContext";
 
 
 export const DoctorContext = createContext();
@@ -13,6 +13,7 @@ const DoctorContextProvider = (props) => {
     localStorage.getItem("dToken") ? localStorage.getItem("dToken") : ""
   );
   const { socket } = useSocket();
+  const { registerSocket } = useSocketActions();
   
   const [appointments, setAppointments] = useState([]);
   const [dashData, setDashData] = useState(false);
@@ -138,26 +139,32 @@ const DoctorContextProvider = (props) => {
     setWaitlists
   };
 
-  // Register the user with backend socket
-  useEffect(() => {
-    if (socket && profileData?._id) {
-      const role = "doctor";
-      socket.emit("register",{userId: profileData._id, role});
+
+  useEffect(()=>{
+    if(dToken){
+        getProfileData();
+        getDashData();
+        getAppointments(); //Fetch appointments on login
+       
+    } else{
+        setProfileData(false)
+        setDashData(false)
+        setAppointments([]); // Clear on logout
     }
-  }, [socket, profileData]);
+},[dToken])
 
+  // Register the user with backend socket
   // useEffect(() => {
-  //   if (!socket) return;
-
-  //   socket.on("slotAssigned", ({ message, appointment }) => {
-  //     toast.success(message);
-  //     getAppointments(); // Refresh doctor appointment list
-  //   });
-
-  //   return () => {
-  //     socket.off("slotAssigned");
-  //   };
-  // }, [socket]);
+  //   if (socket && profileData?._id) {
+  //     const role = "doctor";
+  //     socket.emit("register",{userId: profileData._id, role});
+  //   }
+  // }, [socket, profileData]);
+  useEffect(() => {
+    if (socket && profileData && dToken) {
+        registerSocket(profileData._id, "doctor");
+    }
+  }, [socket, profileData, dToken]);
 
   
   // Listen for real-time events
@@ -166,13 +173,15 @@ const DoctorContextProvider = (props) => {
 
     const handleAppointmentBooked = ({ userId, slotDate, slotTime }) => {
       // email can be sent to doctor
-      toast.success(`New appointment booked by User with ID: ${userId} on ${slotDate} at ${slotTime}`);
+      toast.info(`New appointment booked by a User on ${slotDate} at ${slotTime}`);
       getAppointments(); // Refresh appointments
+      getDashData();
     };
 
     const handleAppointmentCanceled = ({ userId, slotDate, slotTime }) => {
-      toast.info(`Appointment canceled by User with ID: ${userId} on ${slotDate} at ${slotTime}`);
+      toast.info(`Appointment canceled by a User for ${slotDate} at ${slotTime}`);
       getAppointments(); // Refresh appointments
+      getDashData();
     };
 
     const handleWaitlistUpdated = ({ userId, slotDate }) => {
