@@ -45,6 +45,10 @@ const appointmentSchema=new mongoose.Schema({
     isCompleted:{
         type:Boolean,
         default:false
+    },
+    cancelledAt: {
+        type: Date,
+        default: null,
     }
     
 })

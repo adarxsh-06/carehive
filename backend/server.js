@@ -1,4 +1,5 @@
 import express from "express"
+import cron from 'node-cron'
 import cors from "cors"
 import 'dotenv/config'
 import http from "http"; // Required for WebSockets
@@ -8,7 +9,7 @@ import connectCloudinary from "./config/cloudinary.js"
 import adminRouter from "./routes/adminRoute.js"
 import doctorRouter from "./routes/doctorRoute.js"
 import userRouter from "./routes/userRoute.js"
-
+import appointmentModel from "./models/appointmentModel.js";
 
 // app config
 const app = express()
@@ -80,6 +81,23 @@ io.on("connection", (socket) => {
             }
         }
     });
+});
+
+cron.schedule('0 0 * * *', async () => {
+    console.log('Running daily job to delete old cancelled appointments...');
+  
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  
+    try {
+      const result = await appointmentModel.deleteMany({
+        cancelled: true,
+        cancelledAt: { $lt: sevenDaysAgo }
+      });
+  
+      console.log(`Deleted ${result.deletedCount} old cancelled appointments`);
+    } catch (error) {
+      console.error('Error deleting old cancelled appointments:', error);
+    }
 });
 
 // Export io to use in controllers
