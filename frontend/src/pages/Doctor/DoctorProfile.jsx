@@ -36,6 +36,7 @@ const DoctorProfile = () => {
         toast.error(error.message)
     }
   }
+  
 
   useEffect(() => {
     if (dToken) {

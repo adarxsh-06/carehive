@@ -5,18 +5,24 @@ import appointmentModel from "../models/appointmentModel.js"
 import waitlistModel from "../models/waitlistModel.js"
 import { io, clients } from "../server.js"
 
-const changeAvailability=async(req,res)=>{
-    try {
 
-        const {docId}=req.body
-        const docData=await doctorModel.findById(docId)
-        await doctorModel.findByIdAndUpdate(docId, {available: !docData.available})
-        res.json({success:true, message:"Availability Changed"})
-    } catch (error) {
-        console.log(error)
-        res.json({success:false, message:error.message})
+// Function to emit events to specific clients
+const emitToClient = (userId, event, data) => {
+    const client = clients.get(userId);
+    if (client) {
+        io.to(client.socketId).emit(event, data);
     }
-}
+};
+
+// Function to emit events to clients with a specific role
+// const emitToRole = (role, event, data) => {
+//   for (const [userId, client] of clients.entries()) {
+//       if (client.role === role) {
+//           io.to(client.socketId).emit(event, data);
+//       }
+//   }
+// };
+
 
 const doctorList=async(req,res)=>{
     try {
@@ -76,32 +82,47 @@ const appointmentsDoctor=async(req,res)=>{
 
 
 // api to mark appointment completed for doctor panel => email can be sent to the patient thanking him for feedback to doctor and rate him
-const appointmentComplete=async(req,res)=>{
+const appointmentComplete = async (req, res) => {
     try {
-
-        const {docId, appointmentId}=req.body
-        const appointmentData=await appointmentModel.findById(appointmentId)
-
-        if(appointmentData && appointmentData.docId===docId){
-            await appointmentModel.findByIdAndUpdate(appointmentId, {isCompleted:true})
-            return res.json({success:true, message:"Appointment Completed"})
-        } else{
-            return res.json({success:false, message:"Mark Failed"})
-        }
-        
+      const { docId, appointmentId } = req.body;
+      const appointmentData = await appointmentModel.findById(appointmentId);
+  
+      if (!appointmentData) {
+        return res.json({ success: false, message: "Appointment not found" });
+      }
+  
+      if (appointmentData.docId !== docId) {
+        return res.json({ success: false, message: "Unauthorized" });
+      }
+  
+      const { userId, slotDate, slotTime } = appointmentData;
+  
+      // Convert slotDate ("28_4_2025") and slotTime ("11:00 AM") to a JS Date object
+      const [day, month, year] = slotDate.split("_").map(Number);
+      const appointmentDateTime = new Date(`${year}-${month}-${day} ${slotTime}`);
+  
+      const now = new Date();
+      if (now < appointmentDateTime) {
+        return res.json({
+          success: false,
+          message: "Too early to mark this appointment as completed",
+        });
+      }
+  
+      await appointmentModel.findByIdAndUpdate(appointmentId, { isCompleted: true });
+  
+      // Notify the user about the appointment completion
+      emitToClient(userId, "appointment-completed", { slotDate, slotTime });
+  
+      return res.json({ success: true, message: "Appointment marked as completed" });
     } catch (error) {
-        console.log(error)
-        res.json({success:false, message:error.message})
+      console.log(error);
+      res.json({ success: false, message: error.message });
     }
-}
+  };
+  
 
-// Function to emit events to specific clients
-const emitToClient = (userId, event, data) => {
-    const client = clients.get(userId);
-    if (client) {
-        io.to(client.socketId).emit(event, data);
-    }
-};
+
 // api to mark appointment cancelled for doctor panel
 const appointmentCancel = async (req, res) => {
     try {
@@ -156,7 +177,6 @@ const appointmentCancel = async (req, res) => {
       
             // Real-time notification to next user
             emitToClient(nextUser.userId, "waitlist-slot-assigned", {
-                userId: nextUser.userId,
                 docId,
                 slotDate,
                 slotTime,
@@ -173,14 +193,14 @@ const appointmentCancel = async (req, res) => {
         }
       }
       // Notify the original user about successful cancellation
-      emitToClient(userId, "appointment-canceled-user", {
+      emitToClient(userId, "appointment-canceled-by-doctor-1", {
         appointmentId,
         slotDate,
         slotTime,
       });
     
       // Notify doctor about the cancellation
-      emitToClient(docId, "appointment-canceled-doctor", { userId, slotDate, slotTime });
+      emitToClient(docId, "appointment-canceled-by-doctor-2", { userId, slotDate, slotTime });
   
       res.json({ success: true, message: "Appointment Cancelled and Waitlist Handled" });
   
@@ -278,7 +298,6 @@ const getWaitlistByDoctor = async (req, res) => {
 
 
 export {
-    changeAvailability,
     doctorList,
     loginDoctor,
     appointmentsDoctor,

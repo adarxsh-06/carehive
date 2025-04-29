@@ -100,36 +100,48 @@ const AppContextProvider=(props)=>{
     useEffect(() => {
         if (!socket || !userData?._id) return;
 
-        const handleAppointmentCanceled = ({appointmentId, slotDate, slotTime}) => {
+        const handleAppointmentCanceledByUser = ({appointmentId, slotDate, slotTime}) => {
             // email sending to that doctor can be done (not too helpful)
             getAppointments(); //Real-time refresh on slot assign
         };
-        
-        socket.on('appointment-canceled-user', handleAppointmentCanceled);
+        const handleAppointmentCanceledByDoc = ({appointmentId, slotDate, slotTime}) => {
+            toast.info(`Appointment canceled by the Doctor for date: ${slotDate} and time: ${slotTime}`);
+            getAppointments(); //Real-time refresh on slot cancelled
+        };
 
-        socket.on("waitlist-slot-assigned", ({ userId, docId, slotDate, slotTime }) => {
-            if (userId === userData._id) {
-                toast.success(`A slot has been automatically assigned to you on ${slotDate} at ${slotTime}`);
-                getAppointments(); //Real-time refresh on slot assign
-            }
+        const handleAppointmentCompleted = ({slotDate, slotTime}) => {
+            toast.info(`Appointment completed by the Doctor for date: ${slotDate} and time: ${slotTime}`);
+            getAppointments(); //Real-time refresh on slot cancelled
+        };
+
+        const handleDocAvailabilityChange=({name})=>{
+            toast.info(`Availability for Dr. ${name} changed!!`)
+            getDoctorsData()  //Real-time refresh on Docs availability
+        }
+        
+        socket.on('appointment-canceled-by-user-1', handleAppointmentCanceledByUser);
+
+        socket.on('appointment-canceled-by-doctor-1', handleAppointmentCanceledByDoc);
+
+        socket.on('appointment-completed', handleAppointmentCompleted);
+
+        socket.on('availability-changed', handleDocAvailabilityChange)
+
+        socket.on("waitlist-slot-assigned", ({ docId, slotDate, slotTime }) => {
+            toast.success(`A slot has been automatically assigned to you on ${slotDate} at ${slotTime}`);
+            getAppointments(); //Real-time refresh on slot assign
         });
     
 
         return () => {
-            socket.off('appointment-canceled', handleAppointmentCanceled);
+            socket.off('appointment-canceled-by-user-1', handleAppointmentCanceledByUser);
+            socket.off('appointment-canceled-by-doctor-1', handleAppointmentCanceledByDoc);
+            socket.off('appointment-completed', handleAppointmentCompleted);
+            socket.off('availability-changed', handleDocAvailabilityChange)
             socket.off("waitlist-slot-assigned");
         };
     }, [socket, userData]);
 
-
-    
-    // Register the user with backend socket
-    // useEffect(() => {
-    //     if (socket && userData?._id) {
-    //         const role = "user";
-    //         socket.emit("register",{userId: userData._id, role});
-    //     }
-    // }, [socket, userData]);
     useEffect(() => {
         if (socket && userData && token) {
             registerSocket(userData._id, "user");

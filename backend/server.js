@@ -21,7 +21,6 @@ connectCloudinary()
 // Define allowed origins
 const allowedOrigins = [
     process.env.FRONTEND_URL || "http://localhost:5173",  // Frontend
-    process.env.ADMIN_URL || "http://localhost:5174"      // Admin panel
 ];
   
 // CORS options

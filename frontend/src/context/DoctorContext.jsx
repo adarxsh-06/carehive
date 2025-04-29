@@ -153,13 +153,6 @@ const DoctorContextProvider = (props) => {
     }
 },[dToken])
 
-  // Register the user with backend socket
-  // useEffect(() => {
-  //   if (socket && profileData?._id) {
-  //     const role = "doctor";
-  //     socket.emit("register",{userId: profileData._id, role});
-  //   }
-  // }, [socket, profileData]);
   useEffect(() => {
     if (socket && profileData && dToken) {
         registerSocket(profileData._id, "doctor");
@@ -178,24 +171,31 @@ const DoctorContextProvider = (props) => {
       getDashData();
     };
 
-    const handleAppointmentCanceled = ({ userId, slotDate, slotTime }) => {
-      toast.info(`Appointment canceled by a User for ${slotDate} at ${slotTime}`);
+    const handleAppointmentCanceledByUser = ({ userId, slotDate, slotTime }) => {
+      toast.info(`Appointment canceled by a User for date: ${slotDate} and time: ${slotTime}`);
+      getAppointments(); // Refresh appointments
+      getDashData();
+    };
+
+    const handleAppointmentCanceledByDoc = ({ userId, slotDate, slotTime }) => {
       getAppointments(); // Refresh appointments
       getDashData();
     };
 
     const handleWaitlistUpdated = ({ userId, slotDate }) => {
-      toast.info(`Waitlist updated with User ID: ${userId} for ${slotDate}`);
+      toast.info(`Waitlist updated with a user for ${slotDate}`);
       fetchDoctorWaitlist(profileData._id); // Refresh waitlist
     };
 
     socket.on('appointment-booked', handleAppointmentBooked);
-    socket.on('appointment-canceled-doctor', handleAppointmentCanceled);
+    socket.on('appointment-canceled-by-user-2', handleAppointmentCanceledByUser);
+    socket.on('appointment-canceled-by-doctor-2', handleAppointmentCanceledByDoc);
     socket.on('waitlist-updated', handleWaitlistUpdated);
 
     return () => {
       socket.off('appointment-booked', handleAppointmentBooked);
-      socket.off('appointment-canceled-doctor', handleAppointmentCanceled);
+      socket.off('appointment-canceled-by-user-2', handleAppointmentCanceledByUser);
+      socket.off('appointment-canceled-by-doctor-2', handleAppointmentCanceledByDoc);
       socket.off('waitlist-updated', handleWaitlistUpdated);
     };
   }, [socket, profileData]); 

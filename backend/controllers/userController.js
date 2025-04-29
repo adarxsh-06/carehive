@@ -129,14 +129,6 @@ const emitToClient = (userId, event, data) => {
   }
 };
 
-// Function to emit events to clients with a specific role
-// const emitToRole = (role, event, data) => {
-//   for (const [userId, client] of clients.entries()) {
-//       if (client.role === role) {
-//           io.to(client.socketId).emit(event, data);
-//       }
-//   }
-// };
 
 // api to book appointment => handling race condition or concurrecy
 const bookAppointment = async (req, res) => {
@@ -164,17 +156,6 @@ const bookAppointment = async (req, res) => {
       await session.abortTransaction();
       return res.json({success: false, message: "You can't book this slot again as it's cancelled by/for you!!"})
     }
-
-    // const existingAppointmentCancelled=await appointmentModel.findOne({
-    //   docId, slotDate, slotTime, cancelled: true},
-    //   null,
-    //   {session}
-    // )
-
-    // if(existingAppointmentCancelled){
-    //   await session.abortTransaction();
-    //   return res.json({success: false, message: "You can't book this slot again as it's cancelled by/for you!!"})
-    // }
 
 
     // Try to update slots_booked atomically
@@ -249,9 +230,9 @@ const joinWaitlist = async (req, res) => {
       waitlist = new waitlistModel({ docId, slotDate, users: [{ userId }] });
     } else {
       // Avoid duplicate waitlist entries
-      const alreadyJoined = waitlist.users.some((u) => u.userId === userId); //return true if there is any one entry that satisfies the condition
+      const alreadyJoined = waitlist.users.some((u) => (u.userId === userId)); //return true if there is any one entry that satisfies the condition
       if (alreadyJoined) {
-        return res.json({ success: false, message: "Already in waitlist" });
+        return res.json({ success: false, message: "Already in waitlist for this doctor" });
       }
       waitlist.users.push({ userId });
     }
@@ -261,7 +242,7 @@ const joinWaitlist = async (req, res) => {
     // Notify the doctor about the updated waitlist
     emitToClient(docId, 'waitlist-updated', { userId, slotDate });
 
-    res.json({ success: true, message: "Joined Waitlist Successfully" });
+    res.json({ success: true, message: "Joined Waitlist Successfully!! We will reach you if your appointment is booked." });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
@@ -330,7 +311,6 @@ const cancelAppointment = async (req, res) => {
 
         // Real-time notification to next user
         emitToClient(nextUser.userId, "waitlist-slot-assigned", {
-          userId: nextUser.userId,
           docId,
           slotDate,
           slotTime,
@@ -350,14 +330,14 @@ const cancelAppointment = async (req, res) => {
     }
 
     // Notify the original user about successful cancellation
-    emitToClient(userId, "appointment-canceled-user", {
+    emitToClient(userId, "appointment-canceled-by-user-1", {
       appointmentId,
       slotDate,
       slotTime,
     });
   
     // Notify doctor about the cancellation
-    emitToClient(docId, "appointment-canceled-doctor", { userId, slotDate, slotTime });
+    emitToClient(docId, "appointment-canceled-by-user-2", { userId, slotDate, slotTime });
     
     res.json({ success: true, message: "Appointment Cancelled" });
   } catch (error) {
