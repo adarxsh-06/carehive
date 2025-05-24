@@ -9,11 +9,12 @@ import { useSocket } from "../context/SocketContext";
 
 const Appointment = () => {
   const { docId } = useParams();
-  const { doctors, currency, backendUrl, token, getDoctorsData } = useContext(AppContext);
+  const { doctors, currency, backendUrl, token, getDoctorsData } =
+    useContext(AppContext);
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const navigate = useNavigate();
-  const {socket} = useSocket(); // WebSocket context
+  const { socket } = useSocket(); // WebSocket context
 
   const [docInfo, setDocInfo] = useState(null);
   const [docSlots, setDocSlots] = useState([]);
@@ -66,7 +67,8 @@ const Appointment = () => {
         const slotTime = formattedTime;
 
         // const isSlotAvailable=docInfo.slots_booked[slotDate] && docInfo.slots_booked[slotDate].includes(slotTime) ? false : true
-        const isSlotAvailable = !docInfo?.slots_booked?.[slotDate]?.includes(slotTime);
+        const isSlotAvailable =
+          !docInfo?.slots_booked?.[slotDate]?.includes(slotTime);
 
         if (isSlotAvailable) {
           // add slots to array
@@ -124,26 +126,30 @@ const Appointment = () => {
     }
   };
 
-
   const handleJoinWaitlist = async () => {
     if (!token) {
       toast.warn("Login to join waitlist");
-      return navigate('/login');
+      return navigate("/login");
     }
-  
+
     try {
-      const date = docSlots[slotIndex][0]?.datetime || new Date(); // fallback to today
+      // const date = docSlots[slotIndex][0]?.datetime || new Date(); // fallback to today
+      let date=docSlots[slotIndex]?.[0]?.datetime;
+      if(!date){
+        const today = new Date();
+        date = new Date(today.setDate(today.getDate() + slotIndex));
+      }
       const day = date.getDate();
       const month = date.getMonth() + 1;
       const year = date.getFullYear();
       const slotDate = `${day}_${month}_${year}`;
-  
+
       const { data } = await axios.post(
-        backendUrl + '/api/user/join-waitlist',
+        backendUrl + "/api/user/join-waitlist",
         { docId, slotDate },
         { headers: { token } }
       );
-  
+
       if (data.success) {
         toast.success(data.message);
       } else {
@@ -165,7 +171,6 @@ const Appointment = () => {
     }
   }, [docInfo]);
 
-  
   // Listen for real-time slot updates via WebSocket
   useEffect(() => {
     if (!socket) return;
@@ -243,8 +248,9 @@ const Appointment = () => {
           <p>Booking Slots</p>
           <div className="flex gap-3 items-center w-full overflow-x-scroll mt-4">
             {docSlots.length &&
-              docSlots.map((item, index) => (
-                <div
+              docSlots.map((item, index) =>{
+                const date=item.length > 0 ? item[0].datetime : new Date(new Date().setDate(new Date().getDate() + index))
+                return(<div
                   onClick={() => setSlotIndex(index)}
                   className={`text-center py-6 min-w-16 rounded-full cursor-pointer ${
                     slotIndex === index
@@ -253,10 +259,12 @@ const Appointment = () => {
                   }`}
                   key={index}
                 >
-                  <p>{item[0] && daysOfWeek[item[0].datetime.getDay()]}</p>
-                  <p>{item[0] && item[0].datetime.getDate()}</p>
+                  {/* <p>{item[0] && daysOfWeek[item[0].datetime.getDay()]}</p>
+                  <p>{item[0] && item[0].datetime.getDate()}</p> */}
+                  <p>{daysOfWeek[date.getDay()]}</p>
+                  <p>{date.getDate()}</p>
                 </div>
-              ))}
+              )})}
           </div>
 
           <div className="flex items-center gap-3 w-full overflow-x-scroll mt-4">
@@ -276,23 +284,51 @@ const Appointment = () => {
               ))
             ) : (
               <div className="flex flex-col items-center text-center text-sm text-gray-500">
-                <p className="mb-2">All slots are booked for this day.</p>
-                <button
-                  onClick={handleJoinWaitlist}
-                  className="bg-[#5f6FFF] text-white text-sm font-light px-6 py-2 rounded-full"
-                >
-                  Join Waitlist
-                </button>
+                {(() => {
+                  const selectedDate =
+                    docSlots[slotIndex]?.[0]?.datetime || new Date();
+                  const now = new Date();
+                  const isToday =
+                    now.toDateString() === selectedDate.toDateString();
+
+                  const currentTime = now.getHours() * 60 + now.getMinutes();
+                  const endTimeMinutes = 20 * 60 + 30; // 8:30 PM = 1230 minutes
+
+                  if (isToday && currentTime >= endTimeMinutes) {
+                    return (
+                      <p className="mb-2 text-2xl">
+                        No slots can be booked for today now.
+                      </p>
+                    );
+                  } else {
+                    return (
+                      <>
+                        <p className="mb-4 text-2xl">
+                          All slots are booked for this day.
+                        </p>
+                        <button
+                          onClick={handleJoinWaitlist}
+                          className="bg-[#5f6FFF] text-white text-sm font-light px-10 py-3 rounded-full"
+                        >
+                          Join Waitlist
+                        </button>
+                      </>
+                    );
+                  }
+                })()}
               </div>
             )}
           </div>
 
-          <button
-            onClick={bookAppointment}
-            className="bg-[#5f6FFF] text-white text-sm font-light px-14 py-3 rounded-full my-6"
-          >
-            Book an appointment
-          </button>
+
+          {docSlots.length && docSlots[slotIndex]?.length ?(
+            <button
+              onClick={bookAppointment}
+              className="bg-[#5f6FFF] text-white text-sm font-light px-14 py-3 rounded-full my-6"
+            >
+              Book an appointment
+            </button>
+          ) : ""}
         </div>
 
         {/* Related Doctors */}

@@ -90,7 +90,7 @@ cron.schedule('0 0 * * *', async () => {
     try {
       const result = await appointmentModel.deleteMany({
         cancelled: true,
-        cancelledAt: { $lt: sevenDaysAgo }
+        cancelledAt: { $lte: sevenDaysAgo }
       });
   
       console.log(`Deleted ${result.deletedCount} old cancelled appointments`);

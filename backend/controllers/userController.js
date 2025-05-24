@@ -224,15 +224,15 @@ const joinWaitlist = async (req, res) => {
   try {
     const { userId, docId, slotDate } = req.body;
 
-    let waitlist = await waitlistModel.findOne({ docId, slotDate });
+    let waitlist = await waitlistModel.findOne({ docId, slotDate});
 
     if (!waitlist) {
       waitlist = new waitlistModel({ docId, slotDate, users: [{ userId }] });
     } else {
       // Avoid duplicate waitlist entries
-      const alreadyJoined = waitlist.users.some((u) => (u.userId === userId)); //return true if there is any one entry that satisfies the condition
+      const alreadyJoined = waitlist.users.some((u) => u.userId.toString() === userId); //return true if there is any one entry that satisfies the condition
       if (alreadyJoined) {
-        return res.json({ success: false, message: "Already in waitlist for this doctor" });
+        return res.json({ success: false, message: "Already in waitlist for this doctor for today" });
       }
       waitlist.users.push({ userId });
     }
@@ -244,7 +244,7 @@ const joinWaitlist = async (req, res) => {
 
     res.json({ success: true, message: "Joined Waitlist Successfully!! We will reach you if your appointment is booked." });
   } catch (error) {
-    console.log(error);
+    console.log("Error joining waitlist:", error);
     res.json({ success: false, message: error.message });
   }
 };
