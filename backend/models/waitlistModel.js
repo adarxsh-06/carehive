@@ -12,11 +12,13 @@ const waitlistSchema = new mongoose.Schema({
   },
   users: [
     {
-      userId: { type: String },
+      userId: {  type: mongoose.Schema.Types.ObjectId,  ref: 'user'},
       timestamp: { type: Date, default: Date.now }
     }
   ]
 });
+
+waitlistSchema.index({ docId: 1, slotDate: 1 }, { unique: true });
 
 const waitlistModel = mongoose.models.waitlist || mongoose.model("waitlist", waitlistSchema);
 export default waitlistModel;

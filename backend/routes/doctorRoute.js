@@ -12,7 +12,7 @@ doctorRouter.post('/cancel-appointment', authDoctor, appointmentCancel)
 doctorRouter.get('/dashboard', authDoctor, doctorDashboard)
 doctorRouter.get('/profile', authDoctor, doctorProfile)
 doctorRouter.post('/update-profile', authDoctor, updateDoctorProfile)
-doctorRouter.get('/waitlist/:doctorId', authDoctor, getWaitlistByDoctor)
+doctorRouter.get('/waitlist', authDoctor, getWaitlistByDoctor)
 
 
 export default doctorRouter

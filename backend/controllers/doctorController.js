@@ -146,11 +146,13 @@ const appointmentCancel = async (req, res) => {
       const waitlist = await waitlistModel.findOne({ docId, slotDate });
   
       if (waitlist && waitlist.users.length > 0) {
-        const nextUser = waitlist.users.shift();
+        const nextUser = waitlist.users[0];
+        waitlist.users=waitlist.users.slice(1);
         
         // Update waitlist
         if (waitlist.users.length === 0) {
-          await waitlistModel.deleteOne({ _id: waitlist._id });
+          const deleteResult = await waitlistModel.deleteOne({ _id: waitlist._id });
+          console.log('✅ Waitlist deleted:', deleteResult);
         } else {
           await waitlist.save();
         }
@@ -285,9 +287,9 @@ const updateDoctorProfile=async(req,res)=>{
 
 const getWaitlistByDoctor = async (req, res) => {
     try {
-      const { doctorId } = req.params;
+      const {doctorId}=req.body
   
-      const waitlists = await waitlistModel.find({ doctorId }).populate('users.userId', 'name email phone');
+      const waitlists = await waitlistModel.find({  docId: doctorId }).populate('users.userId', 'name phone image');
   
       res.status(200).json({ success: true, waitlists });
     } catch (error) {

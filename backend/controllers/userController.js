@@ -280,13 +280,15 @@ const cancelAppointment = async (req, res) => {
 
     if (waitlistData && waitlistData.users.length > 0) {
       // Get first user in waitlist
-      const nextUser = waitlistData.users.shift(); // FIFO: remove first user
-
+      const nextUser = waitlist.users[0];
+      waitlist.users=waitlist.users.slice(1);
+        
       // Update waitlist
-      if (waitlistData.users.length === 0) {
-        await waitlistModel.deleteOne({ _id: waitlistData._id });
+      if (waitlist.users.length === 0) {
+        const deleteResult = await waitlistModel.deleteOne({ _id: waitlist._id });
+        console.log('✅ Waitlist deleted:', deleteResult);
       } else {
-        await waitlistData.save();
+        await waitlist.save();
       }
 
       const userData = await userModel.findById(nextUser.userId).select("-password");

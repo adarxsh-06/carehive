@@ -108,12 +108,18 @@ const DoctorContextProvider = (props) => {
   };
 
   // Function to fetch waitlist data
-  const fetchDoctorWaitlist = async (doctorId) => {
+  const fetchDoctorWaitlist = async () => {
     try {
-      const response = await axios.get(`${backendUrl}/api/doctor/waitlist/${doctorId}`,{
+      const {data} = await axios.get(`${backendUrl}/api/doctor/waitlist`,{
         headers: { dToken },
       });
-      setWaitlists(response.data.waitlists);
+      if (data.success) {
+        setWaitlists(data.waitlists);
+        console.log(data.waitlists);
+      } else {
+        toast.error(data.message);
+      }
+     
     } catch (err) {
       console.error("Error fetching waitlist:", err);
       toast.error(err.message);
@@ -136,7 +142,7 @@ const DoctorContextProvider = (props) => {
     setProfileData,
     getProfileData,
     waitlists,
-    setWaitlists
+    fetchDoctorWaitlist
   };
 
 
@@ -145,11 +151,12 @@ const DoctorContextProvider = (props) => {
         getProfileData();
         getDashData();
         getAppointments(); //Fetch appointments on login
-       
+        fetchDoctorWaitlist();
     } else{
         setProfileData(false)
         setDashData(false)
-        setAppointments([]); // Clear on logout
+        setAppointments([]); // Clear on 
+        setWaitlists([]);
     }
 },[dToken])
 
@@ -184,7 +191,7 @@ const DoctorContextProvider = (props) => {
 
     const handleWaitlistUpdated = ({ userId, slotDate }) => {
       toast.info(`Waitlist updated with a user for ${slotDate}`);
-      fetchDoctorWaitlist(profileData._id); // Refresh waitlist
+      fetchDoctorWaitlist(); // Refresh waitlist
     };
 
     socket.on('appointment-booked', handleAppointmentBooked);

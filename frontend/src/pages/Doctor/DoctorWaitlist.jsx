@@ -1,67 +1,54 @@
-import { useEffect, useState, useContext } from "react";
-import axios from "axios";
-import { toast } from "react-toastify";
+import { useEffect, useContext } from "react";
+import { DoctorContext } from "../../context/DoctorContext";
 import { AppContext } from "../../context/AppContext";
 
 const DoctorWaitlist = () => {
-  const { backendUrl, token } = useContext(AppContext);
-  // const [waitlist, setWaitlist] = useState([]);
+  const { dToken, waitlists, fetchDoctorWaitlist } = useContext(DoctorContext);
 
-  const months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-  // const fetchWaitlist = async () => {
-  //   try {
-  //     const { data } = await axios.get(`${backendUrl}/api/doctor/waitlist`, {
-  //       headers: { token },
-  //     });
-
-  //     if (data.success) {
-  //       setWaitlist(data.waitlist.reverse());
-  //     } else {
-  //       toast.error(data.message);
-  //     }
-  //   } catch (err) {
-  //     console.log(err);
-  //     toast.error(err.message);
-  //   }
-  // };
-
-  const formatDate = (slotDate) => {
-    const [day, month, year] = slotDate.split("_");
-    return `${day} ${months[parseInt(month)]} ${year}`;
-  };
+  const { slotDateFormat } = useContext(AppContext);
 
   useEffect(() => {
-    if (token) {
-      fetchWaitlist();
+    if (dToken) {
+      fetchDoctorWaitlist();
     }
-  }, [token]);
+  }, [dToken]);
 
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-semibold text-zinc-700 border-b pb-3 mb-4">Waitlisted Appointments</h2>
-      {waitlist.length === 0 ? (
-        <p className="text-sm text-gray-500">No users on the waitlist.</p>
-      ) : (
-        waitlist.map((item, index) => (
+   
+    <div className="w-full max-w-6xl m-5">
+      <p className="mb-3 text-lg font-medium">All Waitlisted Appointments</p>
+      <div className="bg-white border rounded text-sm max-h-[80vh] min-h-[50vh] overflow-y-scroll">
+        <div className="max-sm:hidden grid grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] gap-1 px-6 py-3 border-b">
+          <p>#</p>
+          <p>Patient</p>
+          <p>Date</p>
+          <p>Contact</p>
+        </div>
+
+        {waitlists.reverse().flatMap((wItem, wInd) =>
+          waitlists.users.map((uItem, uInd) => (
           <div
-            key={index}
-            className="p-4 border rounded-lg mb-3 flex flex-col sm:flex-row sm:justify-between sm:items-center"
+            className="flex flex-wrap justify-between max-sm:gap-5 max-sm:text-base sm:grid grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] gap-1 items-center text-gray-500 py-3 px-6 border-b hover:bg-gray-50"
+            key={{wInd}-{uInd}}
           >
-            <div>
-              <p className="text-sm font-medium text-gray-700">User: {item.user?.name || "N/A"}</p>
-              <p className="text-sm text-gray-600">Email: {item.user?.email || "N/A"}</p>
-              {item.reason && <p className="text-sm text-gray-600">Symptoms: {item.reason}</p>}
-              <p className="text-sm text-gray-600">
-                Requested Slot: {formatDate(item.slotDate)} | {item.slotTime}
-              </p>
-              <p className="text-xs text-gray-400">Joined on: {new Date(item.createdAt).toLocaleString()}</p>
+            <p className="max-sm:hidden">{uInd + 1}</p>
+            <div className="flex items-center gap-2">
+              <img
+                className="w-8 rounded-full"
+                src={uItem.userId?.image}
+                alt=""
+              />{" "}
+              <p>{uItem.userId?.name}</p>
             </div>
-            {/* Optional Button */}
-            {/* <button className="mt-3 sm:mt-0 text-sm px-4 py-2 bg-indigo-100 rounded-md text-indigo-700">Assign Slot</button> */}
+            <p>
+              {slotDateFormat(wItem.slotDate)}
+            </p>
+            <p>
+              {uItem.userId?.phone}
+            </p>
           </div>
-        ))
-      )}
+        )))}
+      </div>
     </div>
   );
 };
